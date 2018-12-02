@@ -24,6 +24,7 @@ import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -168,27 +169,17 @@ public class Substratum extends Application {
      *
      * @param context Duh
      */
-    public static void restartSubstratum(Context context, long delay) {
-        PackageManager pm = context.getPackageManager();
-        Intent startActivity = pm.getLaunchIntentForPackage(context.getPackageName());
-
-        if (startActivity != null) startActivity.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        // Create a pending intent so the application is restarted after System.exit(0) was called.
-        // We use an AlarmManager to call this intent in 10ms
-        PendingIntent mPendingIntent =
-                PendingIntent.getActivity(context,
-                        0, startActivity, PendingIntent.FLAG_CANCEL_CURRENT);
-        AlarmManager mgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (mgr != null)
-            mgr.set(AlarmManager.ELAPSED_REALTIME, System.currentTimeMillis() + 10, mPendingIntent);
-
-        // Kill the application
-        new Handler().postDelayed(() -> Process.killProcess(Process.myPid()), delay);
-    }
-
     public static void restartSubstratum(Context context) {
-        restartSubstratum(context, 100L);
+        final Intent homeIntent = new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .setPackage(context.getPackageName())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        final PendingIntent pi = PendingIntent.getActivity(
+            context, 42, // The answer to everything
+            homeIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT);
+        ((AlarmManager) context.getSystemService(Context.ALARM_SERVICE))
+            .setExact(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 100, pi);
+        new Handler().postDelayed(() -> Process.killProcess(Process.myPid()), 500L);
     }
 
     public static SharedPreferences getPreferences() {
